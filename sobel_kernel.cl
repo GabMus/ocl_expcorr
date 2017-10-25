@@ -24,7 +24,7 @@ void kernel sobelx(read_only image2d_t in_pic, write_only image2d_t out_pic) {
         #pragma unroll
         for (int j=0; j<3; j++) {
             float4 pixel = read_imagef(in_pic, sobel_sampler, (int2){get_global_id(0)+i-1, get_global_id(1)+j-1});
-            float luma = (R_LUMA_C * pixel.z) + (G_LUMA_C * pixel.y) + (B_LUMA_C * pixel.x);
+            float luma = (R_LUMA_C * pixel.x) + (G_LUMA_C * pixel.y) + (B_LUMA_C * pixel.z);
             n_pixel += luma * ck_sobelx[i+(j*3)];
         }
     }
@@ -42,7 +42,7 @@ void kernel sobely(read_only image2d_t in_pic, write_only image2d_t out_pic) {
         #pragma unroll
         for (int j=0; j<3; j++) {
             float4 pixel = read_imagef(in_pic, sobel_sampler, (int2){get_global_id(0)+i-1, get_global_id(1)+j-1});
-            float luma = (R_LUMA_C * pixel.z) + (G_LUMA_C * pixel.y) + (B_LUMA_C * pixel.x);
+            float luma = (R_LUMA_C * pixel.x) + (G_LUMA_C * pixel.y) + (B_LUMA_C * pixel.z);
             n_pixel += luma * ck_sobely[i+(j*3)];
         }
     }
