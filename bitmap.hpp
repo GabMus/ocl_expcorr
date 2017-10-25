@@ -59,6 +59,46 @@ void read_bitmap(std::string path, BMPVEC& buffer) {
     file.close();
 }
 
+#ifndef std::string
+#include <string>
+#endif
+
+void read_ppm(std::string path, BMPVEC& buffer, int& width, int& height) {
+    std::ifstream file(path, std::ios::binary);
+
+    if (!file) {
+        std::cerr << TERM_RED << "Error: Could not find image for path " << path << std::endl << TERM_RESET;
+        exit(1);
+    }
+
+    std::string line;
+
+    // P6
+    std::getline(file, line);
+    // width height
+    std::getline(file, line);
+    width = std::stoi(line.substr(0, line.find(" ")+1));
+    height = std::stoi(line.substr(line.find(" "), line.length()-1));
+    // colors
+    std::getline(file, line);
+
+    std::streampos offset = file.tellg();
+
+    file.seekg(0,std::ios::end);
+    std::streampos length = file.tellg();
+    file.seekg(0,std::ios::beg);
+
+    buffer.resize(length);
+    file.read(&buffer[0], length);
+
+    BMPVEC::const_iterator first = buffer.begin() + offset;
+    BMPVEC::const_iterator last = buffer.end();
+
+    buffer = BMPVEC(first, last);
+
+    file.close();
+}
+
 void get_bitmap_data(BMPVEC& buffer, BMPVEC& nbuffer) {
     PBITMAPFILEHEADER b_fh = (PBITMAPFILEHEADER)(&buffer[0]);
     DWORD offset = b_fh->bfOffBits;
@@ -99,21 +139,21 @@ void bgra2rgb(float* invec, int size, unsigned char* outvec) {
 }
 
 void y_mirror_image(unsigned char* invec, int width, int height, unsigned char* outvec) {
-    //int size = width*height*3;
-    int i=0, j=0;
-    while (j<height) {
-        if (i>=width) {i=0; j+=3;}
-        outvec[i+(j*height)] = invec[width-1-i*j*height];
-        i+=3;
+    //width*=3;
+    //height*=3;
+    for (int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            outvec[width-x-1 + (y*width)] = invec[x + y*width];
+        }
     }
 }
 
-void bmp_single_channel2ppm_ordering(unsigned char* invec, int size, unsigned char* outvec) {
+void r2rgb(unsigned char* invec, int size, unsigned char* outvec) {
     int k=0;
     for (int i=0; i<size; i++) {
-        outvec[(size*3)-1-k] = invec[i];
-        outvec[(size*3)-1-(k+1)] = invec[i];
-        outvec[(size*3)-1-(k+2)] = invec[i];
+        outvec[k] = invec[i];
+        outvec[k+1] = invec[i];
+        outvec[k+2] = invec[i];
         k+=3;
     }
 }

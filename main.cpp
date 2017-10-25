@@ -22,6 +22,9 @@
 #include "io_helper.hpp"
 #include "ocl_helper.hpp"
 
+
+#define BMP_PATH "/home/gabmus/Desktop/pics/panorama.ppm"
+
 int main(int argc, char** argv) {
 
     cl_int err;
@@ -29,12 +32,11 @@ int main(int argc, char** argv) {
     std::string pwd = get_dir(argv[0]);
 
     BMPVEC bmp;
-#define BMP_PATH "/home/gabmus/Desktop/pics/test.bmp"
-    read_bitmap(BMP_PATH, bmp);
 
-    PBITMAPINFOHEADER bmp_infoheader = (PBITMAPINFOHEADER)(&bmp[0] + sizeof(BITMAPFILEHEADER));
-    int bmp_width = bmp_infoheader->biWidth;
-    int bmp_height = bmp_infoheader->biHeight;
+    int bmp_width;
+    int bmp_height;
+
+    read_ppm(BMP_PATH, bmp, bmp_width, bmp_height);
 
     std::cout << TERM_GREEN <<
                  "Loaded picture: " <<
@@ -43,11 +45,11 @@ int main(int argc, char** argv) {
                  bmp_width << "x" << bmp_height <<
                  TERM_RESET << std::endl;
 
-    BMPVEC bmp_BGR_data;
-    BMPVEC bmp_BGRA_data;
-    get_bitmap_data(bmp, bmp_BGR_data);
-    bgr2bgra(bmp_BGR_data,
-            bmp_BGRA_data);
+    //BMPVEC bmp_BGR_data;
+    BMPVEC bmp_RGBA_data;
+    //get_bitmap_data(bmp, bmp_BGR_data);
+    bgr2bgra(bmp,
+            bmp_RGBA_data);
 
     cl::Device default_device = ocl_get_default_device();
     cl::Context context({default_device});
@@ -60,7 +62,7 @@ int main(int argc, char** argv) {
                 cl::ImageFormat(CL_RGBA, CL_UNORM_INT8),
                 bmp_width, bmp_height,
                 0,
-                (void*)(&bmp_BGRA_data[0]),
+                (void*)(&bmp_RGBA_data[0]),
                 &err);
     cl_check(err, "Creating input image");
 
@@ -182,16 +184,13 @@ int main(int argc, char** argv) {
                     host_outvec);
     cl_check(err, "Reading image from device");
 
-    unsigned char* rgb_pixelvec_nomirror =  new unsigned char[bmp_width*bmp_height*3];
     unsigned char* rgb_pixelvec =  new unsigned char[bmp_width*bmp_height*3];
-    bmp_single_channel2ppm_ordering(
+    r2rgb(
                 host_outvec,
                 bmp_width*bmp_height,
-                rgb_pixelvec_nomirror);
+                rgb_pixelvec);
 
-    //y_mirror_image(rgb_pixelvec_nomirror, bmp_width, bmp_height, rgb_pixelvec);
-
-    write_ppm(rgb_pixelvec_nomirror,
+    write_ppm(rgb_pixelvec,
               3*bmp_width*bmp_height,
               bmp_width,
               bmp_height,
