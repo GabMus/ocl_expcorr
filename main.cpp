@@ -23,6 +23,8 @@
 #include "ocl_helper.hpp"
 
 
+#define DO_ZONE 1
+
 #define BMP_PATH "/home/gabmus/Desktop/pics/panorama.ppm"
 
 int main(int argc, char** argv) {
@@ -108,8 +110,10 @@ int main(int argc, char** argv) {
 
     std::string kernel_code_sobel = read_kernel(pwd + "/sobel_kernel.cl");
     std::string kernel_code_gaussian = read_kernel(pwd + "/gaussian_kernel.cl");
+    std::string kernel_code_zone = read_kernel(pwd + "/zone_kernel.cl");
     sources.push_back({kernel_code_sobel.c_str(), kernel_code_sobel.length()});
     sources.push_back({kernel_code_gaussian.c_str(), kernel_code_gaussian.length()});
+    sources.push_back({kernel_code_zone.c_str(), kernel_code_zone.length()});
     cl::Program program(context, sources);
     if (program.build({default_device}) != CL_SUCCESS) {
         std::cerr << TERM_RED <<
@@ -124,6 +128,7 @@ int main(int argc, char** argv) {
     cl::Kernel kernel_sobely = cl::Kernel(program, "sobely");
     cl::Kernel kernel_sum_sobel = cl::Kernel(program, "sum_sobel");
     cl::Kernel kernel_gaussian = cl::Kernel(program, "gaussian");
+    cl::Kernel kernel_zone = cl::Kernel(program, "zone");
 
     kernel_gaussian.setArg(0, cl_input_image);
     kernel_gaussian.setArg(1, cl_blurred_image);
@@ -195,6 +200,39 @@ int main(int argc, char** argv) {
               bmp_width,
               bmp_height,
               "/home/gabmus/ocl_out.ppm");
+
+#if DO_ZONE
+    kernel_zone.setArg(0, cl_input_image);
+    kernel_zone.setArg(1, cl_output_image);
+    queue.enqueueNDRangeKernel(
+                kernel_zone,
+                cl::NullRange,
+                cl::NDRange(bmp_width, bmp_height),
+                cl::NullRange);
+    queue.finish();
+
+    err = queue.enqueueReadImage(
+                    cl_output_image,
+                    CL_TRUE,
+                    ri_origin,
+                    ri_region,
+                    0,
+                    0,
+                    host_outvec);
+    cl_check(err, "Reading image from device");
+
+    r2rgb(
+                host_outvec,
+                bmp_width*bmp_height,
+                rgb_pixelvec);
+
+    write_ppm(rgb_pixelvec,
+              3*bmp_width*bmp_height,
+              bmp_width,
+              bmp_height,
+              "/home/gabmus/ocl_out_zone.ppm");
+
+#endif
 
     return 0;
 }
